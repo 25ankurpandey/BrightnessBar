@@ -1,6 +1,11 @@
 package com.example.brightnessbar
 
 object Constants {
-    const val WRITE_SETTINGS_REQ_CODE = 100
-    const val OVERLAY_PERMISSION_REQ_CODE = 101
+    const val ACTION_TOGGLE_OVERLAY =
+        "com.example.accessibilitysvc.MyAccessibilityService.ACTION_TOGGLE_OVERLAY"
+    const val EXTRA_OVERLAY_STATE =
+        "com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_STATE"
+    const val ACTION_CHANGE_OVERLAY_VISIBILITY =
+        "com.example.accessibilitysvc.MyAccessibilityService.ACTION_CHANGE_OVERLAY_VISIBILITY"
+
 }

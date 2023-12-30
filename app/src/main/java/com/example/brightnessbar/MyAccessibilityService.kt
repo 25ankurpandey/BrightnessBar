@@ -23,6 +23,9 @@ import android.view.accessibility.AccessibilityEvent
 import android.widget.FrameLayout
 import android.widget.SeekBar
 import android.widget.Toast
+import com.example.brightnessbar.Constants.ACTION_CHANGE_OVERLAY_VISIBILITY
+import com.example.brightnessbar.Constants.ACTION_TOGGLE_OVERLAY
+
 
 class MyAccessibilityService : AccessibilityService() {
 
@@ -38,12 +41,25 @@ class MyAccessibilityService : AccessibilityService() {
     private lateinit var brightnessSeekBar: SeekBar
     private var lastSegmentIndex: Int = -1
     private var numberOfSegments: Int = 50
-    private var isSeekBarEnabled: Boolean = true
+    private var seekbarVisibility: Boolean = true
     private val toggleOverlayReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == "com.example.accessibilitysvc.MyAccessibilityService.ACTION_TOGGLE_OVERLAY") {
-                val show = intent.getBooleanExtra("com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_STATE", true)
-                isSeekBarEnabled = show
+            if (intent.action.equals(ACTION_TOGGLE_OVERLAY)) {
+                val show = intent.getBooleanExtra(
+                    "com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_STATE", true
+                )
+                if (show) {
+                    initializeView()
+                } else {
+                    removeOverlayView()
+                }
+            } else if (intent.action.equals(ACTION_CHANGE_OVERLAY_VISIBILITY)) {
+                val isVisible = intent.getBooleanExtra(
+                    "com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_VISIBILITY",
+                    true
+                )
+                seekbarVisibility = isVisible
+
             }
         }
     }
@@ -51,7 +67,9 @@ class MyAccessibilityService : AccessibilityService() {
     override fun onCreate() {
         super.onCreate()
         // Register the BroadcastReceiver
-        val filter = IntentFilter("com.example.accessibilitysvc.MyAccessibilityService.ACTION_TOGGLE_OVERLAY")
+        val filter = IntentFilter()
+        filter.addAction(ACTION_TOGGLE_OVERLAY)
+        filter.addAction(ACTION_CHANGE_OVERLAY_VISIBILITY)
         registerReceiver(toggleOverlayReceiver, filter, RECEIVER_EXPORTED)
     }
 
@@ -59,14 +77,22 @@ class MyAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")
             )
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
-        }  else {
-            vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
+        if (sharedPrefs.getBoolean("OverlayEnabled", true)) {
             initializeView()
+        }
+    }
+
+    private fun removeOverlayView() {
+        if (overlayView != null && windowManager != null) {
+            windowManager.removeView(overlayView)
+            overlayView = null // Ensure the reference is cleared
         }
     }
 
@@ -80,14 +106,13 @@ class MyAccessibilityService : AccessibilityService() {
             brightnessSeekBar.visibility = View.INVISIBLE
 
             val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
-            isSeekBarEnabled = sharedPrefs.getBoolean("SliderEnabled", true)
+            seekbarVisibility = sharedPrefs.getBoolean("OverlayVisible", true)
 
             val statusBarHeight = getStatusBarHeight()
 
             // Set the FrameLayout's height to status bar height
             val layoutParamsFrame = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                statusBarHeight
+                FrameLayout.LayoutParams.MATCH_PARENT, statusBarHeight
             )
             overlayView!!.layoutParams = layoutParamsFrame
 
@@ -96,11 +121,7 @@ class MyAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.MATCH_PARENT,
                 statusBarHeight,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSPARENT
             )
 
@@ -108,7 +129,7 @@ class MyAccessibilityService : AccessibilityService() {
             layoutParams.x = 0
             layoutParams.y = 0
 
-            Log.d("+++++++++++++++++++++++++++++++++++++++++",isSeekBarEnabled.toString())
+            Log.d("+++++++++++++++++++++++++++++++++++++++++", seekbarVisibility.toString())
 
             gestureDetector =
                 GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
@@ -116,7 +137,7 @@ class MyAccessibilityService : AccessibilityService() {
                         isLongPressing = true
                         performHapticFeedback(50)
                         // Initialize the SeekBar and make it visible on long press
-                        if (isSeekBarEnabled) {
+                        if (seekbarVisibility) {
                             brightnessSeekBar.visibility =
                                 View.VISIBLE // Make the SeekBar visible on long press
                         }
@@ -150,8 +171,7 @@ class MyAccessibilityService : AccessibilityService() {
 
                             // Adjust xPosition to be within the padded area
                             val xPosition = event.rawX.coerceIn(
-                                padding.toFloat(),
-                                (screenWidth - padding).toFloat()
+                                padding.toFloat(), (screenWidth - padding).toFloat()
                             )
 
                             // Adjust progress calculation for padding, ensuring it's within SeekBar bounds
@@ -224,18 +244,13 @@ class MyAccessibilityService : AccessibilityService() {
                 try {
                     // Directly use the brightnessLevel as it matches the system's range
                     Settings.System.putInt(
-                        contentResolver,
-                        Settings.System.SCREEN_BRIGHTNESS,
-                        brightnessLevel
+                        contentResolver, Settings.System.SCREEN_BRIGHTNESS, brightnessLevel
                     )
                 } catch (e: SecurityException) {
                     e.printStackTrace()
                     Toast.makeText(
-                        this,
-                        "Need permission to change settings!",
-                        Toast.LENGTH_SHORT
-                    )
-                        .show()
+                        this, "Need permission to change settings!", Toast.LENGTH_SHORT
+                    ).show()
                 }
             } else {
                 // Prompt the user to grant permission
@@ -248,9 +263,7 @@ class MyAccessibilityService : AccessibilityService() {
             // For older versions, directly update system brightness
             try {
                 Settings.System.putInt(
-                    contentResolver,
-                    Settings.System.SCREEN_BRIGHTNESS,
-                    brightnessLevel
+                    contentResolver, Settings.System.SCREEN_BRIGHTNESS, brightnessLevel
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -275,8 +288,7 @@ class MyAccessibilityService : AccessibilityService() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator.vibrate(
                     VibrationEffect.createOneShot(
-                        50,
-                        intensity
+                        50, intensity
                     )
                 )  // Vibrate with calculated intensity
             } else {
@@ -291,18 +303,15 @@ class MyAccessibilityService : AccessibilityService() {
         // Check for the type of accessibility event to log appropriate information
         when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_CLICKED -> Log.d(
-                "AccessibilityEvent",
-                "View Clicked: " + event.contentDescription
+                "AccessibilityEvent", "View Clicked: " + event.contentDescription
             )
 
             AccessibilityEvent.TYPE_VIEW_FOCUSED -> Log.d(
-                "AccessibilityEvent",
-                "View Focused: " + event.contentDescription
+                "AccessibilityEvent", "View Focused: " + event.contentDescription
             )
 
             AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> Log.d(
-                "AccessibilityEvent",
-                "View Long Clicked: " + event.contentDescription
+                "AccessibilityEvent", "View Long Clicked: " + event.contentDescription
             )
         }
 

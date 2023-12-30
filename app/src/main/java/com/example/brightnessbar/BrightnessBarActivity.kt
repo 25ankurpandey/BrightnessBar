@@ -15,6 +15,9 @@ import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.brightnessbar.Constants.ACTION_CHANGE_OVERLAY_VISIBILITY
+import com.example.brightnessbar.Constants.ACTION_TOGGLE_OVERLAY
+import com.example.brightnessbar.Constants.EXTRA_OVERLAY_STATE
 import com.example.brightnessbar.Utils.showPermissionRationale
 import com.example.brightnessbar.databinding.BrightnessBarActivityBinding
 
@@ -23,7 +26,8 @@ class BrightnessBarActivity : AppCompatActivity() {
     private lateinit var binding: BrightnessBarActivityBinding
     private lateinit var topButton: Button
     private lateinit var bottomLayout: LinearLayout
-    private lateinit var topSlider: Switch  // Add a Switch for on/off slider.
+    private lateinit var topSlider: Switch
+    private lateinit var brightnessBarVisibilitySwitch: Switch
     private var hasAccessibilityPermission = false
     private var hasWriteSettingsPermission = false
     private var isAccessibilityPermissionRequestedEarlier = false
@@ -42,10 +46,11 @@ class BrightnessBarActivity : AppCompatActivity() {
         topButton = binding.enableServiceButton
         topSlider = binding.serviceToggleSwitch
         bottomLayout = binding.bottomLayout
+        brightnessBarVisibilitySwitch = binding.brightnessBarVsibilityToggleSwitch
 
         val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
-        val isSliderEnabled = sharedPrefs.getBoolean("SliderEnabled", true) // Default is true
-        topSlider.isChecked = isSliderEnabled
+        topSlider.isChecked = sharedPrefs.getBoolean("OverlayEnabled", true) // Default is true
+        brightnessBarVisibilitySwitch.isChecked = sharedPrefs.getBoolean("OverlayVisible", true) // Default is true
 
         // Initial state: bottom layout is non-interactable and faded
         updateUIBasedOnPermissions()
@@ -59,14 +64,29 @@ class BrightnessBarActivity : AppCompatActivity() {
         topSlider.setOnCheckedChangeListener { _, isChecked ->
             // Save the new state of the switch
             with(sharedPrefs.edit()) {
-                putBoolean("SliderEnabled", isChecked)
+                putBoolean("OverlayEnabled", isChecked)
                 apply()
             }
 
             // Send a broadcast to MyAccessibilityService to toggle the overlay
-            val intent = Intent("com.example.accessibilitysvc.MyAccessibilityService.ACTION_TOGGLE_OVERLAY")
+            val intent = Intent(ACTION_TOGGLE_OVERLAY)
             intent.putExtra("com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_STATE", isChecked)
             sendBroadcast(intent)
+        }
+
+        brightnessBarVisibilitySwitch.setOnCheckedChangeListener { _, isChecked ->
+            with(sharedPrefs.edit()) {
+                putBoolean("OverlayVisible", isChecked)
+                apply()
+            }
+            if (topSlider.isChecked) {  // Only proceed if the main service toggle is on
+                val intent = Intent(ACTION_CHANGE_OVERLAY_VISIBILITY)
+                intent.putExtra("com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_VISIBILITY", isChecked)
+                sendBroadcast(intent)
+            } else {
+                Toast.makeText(this, "Please enable the service first", Toast.LENGTH_SHORT).show()
+                brightnessBarVisibilitySwitch.isChecked = false  // Reset the toggle if the service isn't enabled
+            }
         }
     }
 
@@ -97,18 +117,6 @@ class BrightnessBarActivity : AppCompatActivity() {
         return true
     }
 
-    private fun toggleVisibility(visible: Boolean) {
-        val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
-        with(sharedPrefs.edit()) {
-            putBoolean("OverlayTransparency", visible)
-            apply()
-        }
-
-        // Send a broadcast indicating that the transparency has changed
-        val intent = Intent("com.example.brightnessbar.TRANSPARENCY_CHANGED")
-        sendBroadcast(intent)
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -130,43 +138,6 @@ class BrightnessBarActivity : AppCompatActivity() {
             }
         }
     }
-
-//    private fun showPermissionRationale(rationale: String) {
-//        AlertDialog.Builder(this)
-//            .setMessage(rationale)
-//            .setPositiveButton("Settings") { _, _ ->
-//                when (rationale) {
-//                    getString(R.string.overlay_permission_rationale) -> {
-//                        startActivityForResult(
-//                            Intent(
-//                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-//                                Uri.parse("package:$packageName")
-//                            ), PERMISSION_OVERLAY_REQUEST_CODE
-//                        )
-//                    }
-//
-//                    getString(R.string.write_settings_rationale) -> {
-//                        startActivityForResult(
-//                            Intent(
-//                                Settings.ACTION_MANAGE_WRITE_SETTINGS,
-//                                Uri.parse("package:$packageName")
-//                            ), PERMISSION_WRITE_SETTINGS_REQUEST_CODE
-//                        )
-//                    }
-//
-//                    getString(R.string.accessibility_service_rationale) -> {
-//                        startActivityForResult(
-//                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
-//                            PERMISSION_ACCESSIBILITY_SETTINGS_REQUEST_CODE
-//                        )
-//                    }
-//                }
-//            }
-//            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
-//            .create()
-//            .show()
-//    }
-
 
     // Update UI based on whether the accessibility service is enabled
     private fun updateUIBasedOnPermissions() {
