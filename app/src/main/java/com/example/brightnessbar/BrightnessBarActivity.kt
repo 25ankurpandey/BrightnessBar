@@ -10,11 +10,14 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityManager
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.Toast
@@ -198,21 +201,63 @@ class BrightnessBarActivity : AppCompatActivity() {
     }
 
     private fun showDrawableSelector() {
-        // Prepare the drawable items. You might want to have them in an array or list.
-        val drawableItems = arrayOf("Drawable 1", "Drawable 2")
-        val drawablesResIds =
-            arrayOf(R.drawable.progress_bar_fill_black, R.drawable.progress_bar_fill_white)
+        // Inflate the custom AlertDialog layout
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_drawable_selector, null)
 
+        // Prepare seek bars and drawable resource IDs mapping
+        val seekBarMap = mapOf(
+            dialogView.findViewById<SeekBar>(R.id.seekBar1) to R.drawable.progress_bar_fill_black,
+            dialogView.findViewById<SeekBar>(R.id.seekBar2) to R.drawable.progress_bar_fill_white
+        )
+
+        // Variable to hold the current selected drawable resource ID
+        var selectedDrawableResId: Int? = null
+
+        // Set click listeners for each seek bar to handle selection
+        for ((seekBar, drawableResId) in seekBarMap) {
+            seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    // Optionally update something as the user slides the seek bar
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                    // Highlight the selected drawable when touched
+                    selectedDrawableResId = drawableResId
+                    highlightSelectedDrawable(seekBarMap.keys, seekBar)
+                }
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    // Handle stop tracking if needed
+                }
+            })
+        }
+
+        // Create and show the AlertDialog
         AlertDialog.Builder(this)
             .setTitle("Choose Drawable")
-            .setItems(drawableItems) { dialog, which ->
-                // 'which' is the index of the selected item
-                val selectedDrawableResId = drawablesResIds[which]
-                updateSeekBarDrawable(selectedDrawableResId)
+            .setView(dialogView)
+            .setPositiveButton("Apply") { dialog, which ->
+                // Apply the selected drawable
+                selectedDrawableResId?.let { updateSeekBarDrawable(it) }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
+
+    // Helper function to highlight the selected SeekBar and remove highlight from others
+    private fun highlightSelectedDrawable(seekBars: Collection<SeekBar>, selectedSeekBar: SeekBar?) {
+        for (seekBar in seekBars) {
+            if (seekBar == selectedSeekBar) {
+                // Highlight the selected SeekBar. This can be a border or different background
+                seekBar.setBackgroundResource(R.drawable.selected_drawable_background)
+            } else {
+                // Remove highlight from all other SeekBars
+                seekBar.background = null
+            }
+        }
+    }
+
+
 
     private fun updateSeekBarDrawable(drawableResId: Int) {
         val intent = Intent(ACTION_CHANGE_OVERLAY_DRAWABLE)
