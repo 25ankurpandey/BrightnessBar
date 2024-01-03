@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.view.ViewGroup
 import android.view.accessibility.AccessibilityManager
 import android.widget.Button
 import android.widget.LinearLayout
@@ -24,9 +25,9 @@ import com.example.brightnessbar.databinding.BrightnessBarActivityBinding
 class BrightnessBarActivity : AppCompatActivity() {
 
     private lateinit var binding: BrightnessBarActivityBinding
-    private lateinit var topButton: Button
+    private lateinit var grantPermissionsSwitch: Button
     private lateinit var bottomLayout: LinearLayout
-    private lateinit var topSlider: Switch
+    private lateinit var serviceToggleSwitch: Switch
     private lateinit var brightnessBarVisibilitySwitch: Switch
     private var hasAccessibilityPermission = false
     private var hasWriteSettingsPermission = false
@@ -43,25 +44,25 @@ class BrightnessBarActivity : AppCompatActivity() {
         binding = BrightnessBarActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        topButton = binding.enableServiceButton
-        topSlider = binding.serviceToggleSwitch
+        grantPermissionsSwitch = binding.enableServiceButton
+        serviceToggleSwitch = binding.serviceToggleSwitch
         bottomLayout = binding.bottomLayout
         brightnessBarVisibilitySwitch = binding.brightnessBarVsibilityToggleSwitch
 
         val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
-        topSlider.isChecked = sharedPrefs.getBoolean("OverlayEnabled", true) // Default is true
+        serviceToggleSwitch.isChecked = sharedPrefs.getBoolean("OverlayEnabled", true) // Default is true
         brightnessBarVisibilitySwitch.isChecked = sharedPrefs.getBoolean("OverlayVisible", true) // Default is true
 
         // Initial state: bottom layout is non-interactable and faded
         updateUIBasedOnPermissions()
 
-        topButton.setOnClickListener {
+        grantPermissionsSwitch.setOnClickListener {
             if (checkAndRequestPermissions()) {
                 updateUIBasedOnPermissions()
             }
         }
 
-        topSlider.setOnCheckedChangeListener { _, isChecked ->
+        serviceToggleSwitch.setOnCheckedChangeListener { _, isChecked ->
             // Save the new state of the switch
             with(sharedPrefs.edit()) {
                 putBoolean("OverlayEnabled", isChecked)
@@ -79,7 +80,7 @@ class BrightnessBarActivity : AppCompatActivity() {
                 putBoolean("OverlayVisible", isChecked)
                 apply()
             }
-            if (topSlider.isChecked) {  // Only proceed if the main service toggle is on
+            if (serviceToggleSwitch.isChecked) {  // Only proceed if the main service toggle is on
                 val intent = Intent(ACTION_CHANGE_OVERLAY_VISIBILITY)
                 intent.putExtra("com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_VISIBILITY", isChecked)
                 sendBroadcast(intent)
@@ -142,17 +143,25 @@ class BrightnessBarActivity : AppCompatActivity() {
     // Update UI based on whether the accessibility service is enabled
     private fun updateUIBasedOnPermissions() {
         val hasAllPermissions = checkAllPermissions()
+
+        // Toggle the visibility of the grantPermissions button
+        grantPermissionsSwitch.visibility = if (hasAllPermissions) View.GONE else View.VISIBLE
+
+        // Set the entire bottomLayout (LinearLayout) and its children to be non-interactable or interactable based on permissions
         bottomLayout.isEnabled = hasAllPermissions
         bottomLayout.alpha = if (hasAllPermissions) 1f else 0.5f
 
-        if (hasAllPermissions) {
-            // If all permissions are granted, show the slider and hide the button
-            topSlider.visibility = View.VISIBLE
-            topButton.visibility = View.GONE
-        } else {
-            // If any permission is missing, show the button and hide the slider
-            topSlider.visibility = View.GONE
-            topButton.visibility = View.VISIBLE
+        // Recursively disable or enable all child views within the layout
+        setViewAndChildrenEnabled(bottomLayout, hasAllPermissions)
+    }
+
+    private fun setViewAndChildrenEnabled(view: View, enabled: Boolean) {
+        view.isEnabled = enabled
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val child = view.getChildAt(i)
+                setViewAndChildrenEnabled(child, enabled)
+            }
         }
     }
 

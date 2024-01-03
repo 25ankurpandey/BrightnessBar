@@ -1,51 +1,35 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
-    <FrameLayout
-        android:id="@+id/topLayout"
+    <Button
+        android:id="@+id/enableServiceButton"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Enable Accessibility Service" />
 
-        <Button
-            android:id="@+id/enableServiceButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Enable Accessibility Service"
-            android:visibility="gone"/>
+    <LinearLayout
+        android:id="@+id/bottomLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical">
 
         <Switch
             android:id="@+id/serviceToggleSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Brightness Bar On/Off"
-            android:visibility="gone" />
-    </FrameLayout>
-
-    <LinearLayout
-        android:id="@+id/bottomLayout"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:alpha="0.5"
-        android:gravity="center"
-        android:orientation="vertical">
+            android:layout_marginBottom="100dp"
+            android:text="Brightness Bar On/Off" />
 
         <Switch
             android:id="@+id/brightnessBarVsibilityToggleSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:layout_marginTop="100dp"
             android:text="Slider Visibility" />
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Button 1" />
     </LinearLayout>
 
-</LinearLayout>
+</FrameLayout>
