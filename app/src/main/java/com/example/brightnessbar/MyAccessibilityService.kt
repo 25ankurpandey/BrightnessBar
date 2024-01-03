@@ -75,13 +75,13 @@ class MyAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")
-            )
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(intent)
-        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+//            val intent = Intent(
+//                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")
+//            )
+//            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+//            startActivity(intent)
+//        }
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
         if (sharedPrefs.getBoolean("OverlayEnabled", true)) {
@@ -100,26 +100,29 @@ class MyAccessibilityService : AccessibilityService() {
         // Inflate the overlay layout
         overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_layout, null)
         if (overlayView != null) {
+            val statusBarHeight = getStatusBarHeight()
+            val overlayHeightAdjustment = 25 // Adjust this value as needed
+
             // Initialize the SeekBar from the overlay layout
             brightnessSeekBar = overlayView!!.findViewById(R.id.brightness_slider) as SeekBar
             brightnessSeekBar.max = 255
             brightnessSeekBar.visibility = View.INVISIBLE
+            brightnessSeekBar.maxHeight = statusBarHeight
 
             val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
             seekbarVisibility = sharedPrefs.getBoolean("OverlayVisible", true)
 
-            val statusBarHeight = getStatusBarHeight()
-
-            // Set the FrameLayout's height to status bar height
+            // Set the FrameLayout's height to slightly less than status bar height
             val layoutParamsFrame = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, statusBarHeight
+                FrameLayout.LayoutParams.MATCH_PARENT, statusBarHeight - overlayHeightAdjustment
             )
             overlayView!!.layoutParams = layoutParamsFrame
+
 
             windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
             val layoutParams = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
-                statusBarHeight,
+                statusBarHeight - overlayHeightAdjustment,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSPARENT
@@ -128,8 +131,6 @@ class MyAccessibilityService : AccessibilityService() {
             layoutParams.gravity = Gravity.TOP or Gravity.START
             layoutParams.x = 0
             layoutParams.y = 0
-
-            Log.d("+++++++++++++++++++++++++++++++++++++++++", seekbarVisibility.toString())
 
             gestureDetector =
                 GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
@@ -141,12 +142,15 @@ class MyAccessibilityService : AccessibilityService() {
                             brightnessSeekBar.visibility =
                                 View.VISIBLE // Make the SeekBar visible on long press
                         }
+
+                        layoutParams.height = statusBarHeight
+                        windowManager.updateViewLayout(overlayView, layoutParams)
                     }
                 })
 
 
 // Define padding values (in pixels)
-            val padding = 200 // for example, 30 pixels on each side
+            val padding = 200 // 200 pixels on each side
 
             overlayView?.setOnTouchListener { _, event ->
                 gestureDetector.onTouchEvent(event)
@@ -205,6 +209,8 @@ class MyAccessibilityService : AccessibilityService() {
 
                         MotionEvent.ACTION_UP -> {
                             brightnessSeekBar.visibility = View.INVISIBLE
+                            layoutParams.height = statusBarHeight - overlayHeightAdjustment
+                            windowManager.updateViewLayout(overlayView, layoutParams)
                             isLongPressing = false
                             lastSegmentIndex = -1  // Reset the last segment index
                             segmentsMoved = 0  // Reset the segments moved counter
@@ -328,9 +334,7 @@ class MyAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         unregisterReceiver(toggleOverlayReceiver)  // Unregister the receiver
-//        if (isOverlayVisible && overlayView != null) {
-//            windowManager.removeView(overlayView)  // Remove the overlay view
-//        }
+        removeOverlayView()
         super.onDestroy()
     }
 }

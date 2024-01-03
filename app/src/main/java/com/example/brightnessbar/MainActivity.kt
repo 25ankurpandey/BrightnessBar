@@ -25,17 +25,33 @@ import com.example.brightnessbar.databinding.ActivityMainBinding
 class MainActivity : Activity() {
 
     private lateinit var binding: ActivityMainBinding
-    private var hasOverlayPermission = false
-    private var hasWriteSettingsPermission = false
-    private var isWritePermissionRequestedEarlier = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
-        binding.buttonStart.setOnClickListener {
+        // Initialize SharedPreferences
+        val sharedPref = this.getPreferences(Context.MODE_PRIVATE)
+
+        // Check if it's the first launch
+        if (sharedPref.getBoolean("isFirstLaunch", true)) {
+            // If first launch, update the flag
+            with(sharedPref.edit()) {
+                putBoolean("isFirstLaunch", false)
+                apply()
+            }
+
+            // Proceed with MainActivity's original onCreate code
+            binding = ActivityMainBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+
+            binding.buttonStart.setOnClickListener {
                 startBrightnessBarActivity()
+            }
+
+        } else {
+            // If not first launch, redirect to BrightnessBarActivity
+            startBrightnessBarActivity()
+            finish() // Close MainActivity
         }
     }
 
