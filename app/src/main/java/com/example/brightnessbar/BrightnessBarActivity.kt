@@ -1,6 +1,7 @@
 package com.example.brightnessbar
 
 import android.accessibilityservice.AccessibilityService
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
@@ -8,14 +9,18 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityManager
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.example.brightnessbar.Constants.ACTION_CHANGE_OVERLAY_DRAWABLE
 import com.example.brightnessbar.Constants.ACTION_CHANGE_OVERLAY_VISIBILITY
 import com.example.brightnessbar.Constants.ACTION_TOGGLE_OVERLAY
 import com.example.brightnessbar.Constants.EXTRA_OVERLAY_STATE
@@ -29,6 +34,7 @@ class BrightnessBarActivity : AppCompatActivity() {
     private lateinit var bottomLayout: LinearLayout
     private lateinit var serviceToggleSwitch: Switch
     private lateinit var brightnessBarVisibilitySwitch: Switch
+    private lateinit var changeDrawableButton: Button
     private var hasAccessibilityPermission = false
     private var hasWriteSettingsPermission = false
     private var isAccessibilityPermissionRequestedEarlier = false
@@ -37,6 +43,7 @@ class BrightnessBarActivity : AppCompatActivity() {
         private const val PERMISSION_ACCESSIBILITY_SETTINGS_REQUEST_CODE = 1
         const val PERMISSION_OVERLAY_REQUEST_CODE = 2
         const val PERMISSION_WRITE_SETTINGS_REQUEST_CODE = 3
+        const val DRAWABLE_REQUEST_CODE = 100
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,12 +53,15 @@ class BrightnessBarActivity : AppCompatActivity() {
 
         grantPermissionsSwitch = binding.enableServiceButton
         serviceToggleSwitch = binding.serviceToggleSwitch
+        changeDrawableButton = binding.changeDrawableButton
         bottomLayout = binding.bottomLayout
         brightnessBarVisibilitySwitch = binding.brightnessBarVsibilityToggleSwitch
 
         val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
-        serviceToggleSwitch.isChecked = sharedPrefs.getBoolean("OverlayEnabled", true) // Default is true
-        brightnessBarVisibilitySwitch.isChecked = sharedPrefs.getBoolean("OverlayVisible", true) // Default is true
+        serviceToggleSwitch.isChecked =
+            sharedPrefs.getBoolean("OverlayEnabled", true) // Default is true
+        brightnessBarVisibilitySwitch.isChecked =
+            sharedPrefs.getBoolean("OverlayVisible", true) // Default is true
 
         // Initial state: bottom layout is non-interactable and faded
         updateUIBasedOnPermissions()
@@ -71,7 +81,10 @@ class BrightnessBarActivity : AppCompatActivity() {
 
             // Send a broadcast to MyAccessibilityService to toggle the overlay
             val intent = Intent(ACTION_TOGGLE_OVERLAY)
-            intent.putExtra("com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_STATE", isChecked)
+            intent.putExtra(
+                "com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_STATE",
+                isChecked
+            )
             sendBroadcast(intent)
         }
 
@@ -82,12 +95,20 @@ class BrightnessBarActivity : AppCompatActivity() {
             }
             if (serviceToggleSwitch.isChecked) {  // Only proceed if the main service toggle is on
                 val intent = Intent(ACTION_CHANGE_OVERLAY_VISIBILITY)
-                intent.putExtra("com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_VISIBILITY", isChecked)
+                intent.putExtra(
+                    "com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_VISIBILITY",
+                    isChecked
+                )
                 sendBroadcast(intent)
             } else {
                 Toast.makeText(this, "Please enable the service first", Toast.LENGTH_SHORT).show()
-                brightnessBarVisibilitySwitch.isChecked = false  // Reset the toggle if the service isn't enabled
+                brightnessBarVisibilitySwitch.isChecked =
+                    false  // Reset the toggle if the service isn't enabled
             }
+        }
+
+        changeDrawableButton.setOnClickListener {
+            showDrawableSelector()
         }
     }
 
@@ -121,21 +142,32 @@ class BrightnessBarActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == PERMISSION_WRITE_SETTINGS_REQUEST_CODE) {
-            hasWriteSettingsPermission = Settings.System.canWrite(this)
-            if (!hasWriteSettingsPermission) {
-                showPermissionRationale(this, getString(R.string.write_settings_rationale), PERMISSION_WRITE_SETTINGS_REQUEST_CODE)
+        when (requestCode) {
+            PERMISSION_WRITE_SETTINGS_REQUEST_CODE -> {
+                hasWriteSettingsPermission = Settings.System.canWrite(this)
+                if (!hasWriteSettingsPermission) {
+                    showPermissionRationale(
+                        this,
+                        getString(R.string.write_settings_rationale),
+                        PERMISSION_WRITE_SETTINGS_REQUEST_CODE
+                    )
+                }
             }
-        } else if (requestCode == PERMISSION_ACCESSIBILITY_SETTINGS_REQUEST_CODE) {
-            hasAccessibilityPermission =
-                isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)
-        }
 
-        if (hasWriteSettingsPermission && !hasAccessibilityPermission) {
-            if (isAccessibilityPermissionRequestedEarlier) {
-                showPermissionRationale(this, getString(R.string.accessibility_service_rationale), PERMISSION_ACCESSIBILITY_SETTINGS_REQUEST_CODE)
-            } else {
-                checkAndRequestPermissions()
+            PERMISSION_ACCESSIBILITY_SETTINGS_REQUEST_CODE -> {
+                hasAccessibilityPermission =
+                    isAccessibilityServiceEnabled(this, MyAccessibilityService::class.java)
+                if (hasWriteSettingsPermission && !hasAccessibilityPermission) {
+                    if (isAccessibilityPermissionRequestedEarlier) {
+                        showPermissionRationale(
+                            this,
+                            getString(R.string.accessibility_service_rationale),
+                            PERMISSION_ACCESSIBILITY_SETTINGS_REQUEST_CODE
+                        )
+                    } else {
+                        checkAndRequestPermissions()
+                    }
+                }
             }
         }
     }
@@ -164,6 +196,33 @@ class BrightnessBarActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun showDrawableSelector() {
+        // Prepare the drawable items. You might want to have them in an array or list.
+        val drawableItems = arrayOf("Drawable 1", "Drawable 2")
+        val drawablesResIds =
+            arrayOf(R.drawable.progress_bar_fill_black, R.drawable.progress_bar_fill_white)
+
+        AlertDialog.Builder(this)
+            .setTitle("Choose Drawable")
+            .setItems(drawableItems) { dialog, which ->
+                // 'which' is the index of the selected item
+                val selectedDrawableResId = drawablesResIds[which]
+                updateSeekBarDrawable(selectedDrawableResId)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun updateSeekBarDrawable(drawableResId: Int) {
+        val intent = Intent(ACTION_CHANGE_OVERLAY_DRAWABLE)
+        intent.putExtra(
+            "com.example.accessibilitysvc.MyAccessibilityService.UPDATED_OVERLAY_DRAWABLE",
+            drawableResId
+        )
+        sendBroadcast(intent)
+    }
+
 
     // Check if Accessibility Service is enabled
     private fun isAccessibilityServiceEnabled(

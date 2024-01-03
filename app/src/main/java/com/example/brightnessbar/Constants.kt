@@ -7,5 +7,6 @@ object Constants {
         "com.example.accessibilitysvc.MyAccessibilityService.EXTRA_OVERLAY_STATE"
     const val ACTION_CHANGE_OVERLAY_VISIBILITY =
         "com.example.accessibilitysvc.MyAccessibilityService.ACTION_CHANGE_OVERLAY_VISIBILITY"
-
+    const val ACTION_CHANGE_OVERLAY_DRAWABLE =
+        "com.example.accessibilitysvc.MyAccessibilityService.ACTION_CHANGE_OVERLAY_DRAWABLE"
 }

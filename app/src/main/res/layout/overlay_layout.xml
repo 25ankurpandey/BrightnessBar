@@ -11,6 +11,6 @@
         android:max="255"
         android:paddingStart="0dp"
         android:paddingEnd="0dp"
-        android:progressDrawable="@drawable/progress_bar_fill"
+        android:progressDrawable="@drawable/progress_bar_fill_white"
         android:thumb="@drawable/custom_thumb_drawable"/>
 </FrameLayout>

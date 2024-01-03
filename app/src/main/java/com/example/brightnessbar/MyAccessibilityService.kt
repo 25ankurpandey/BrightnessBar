@@ -23,6 +23,8 @@ import android.view.accessibility.AccessibilityEvent
 import android.widget.FrameLayout
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.core.content.ContextCompat
+import com.example.brightnessbar.Constants.ACTION_CHANGE_OVERLAY_DRAWABLE
 import com.example.brightnessbar.Constants.ACTION_CHANGE_OVERLAY_VISIBILITY
 import com.example.brightnessbar.Constants.ACTION_TOGGLE_OVERLAY
 
@@ -42,6 +44,8 @@ class MyAccessibilityService : AccessibilityService() {
     private var lastSegmentIndex: Int = -1
     private var numberOfSegments: Int = 50
     private var seekbarVisibility: Boolean = true
+    private var seekbarDrawableId: Int = 0
+
     private val toggleOverlayReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action.equals(ACTION_TOGGLE_OVERLAY)) {
@@ -60,6 +64,12 @@ class MyAccessibilityService : AccessibilityService() {
                 )
                 seekbarVisibility = isVisible
 
+            } else if (intent.action.equals(ACTION_CHANGE_OVERLAY_DRAWABLE)) {
+                val drawableResId = intent.getIntExtra("com.example.accessibilitysvc.MyAccessibilityService.UPDATED_OVERLAY_DRAWABLE", 0)
+                Log.d("888888888888888888888888888888888888888",drawableResId.toString())
+                if(drawableResId != 0){
+                    updateSeekBarDrawable(drawableResId)
+                }
             }
         }
     }
@@ -70,6 +80,7 @@ class MyAccessibilityService : AccessibilityService() {
         val filter = IntentFilter()
         filter.addAction(ACTION_TOGGLE_OVERLAY)
         filter.addAction(ACTION_CHANGE_OVERLAY_VISIBILITY)
+        filter.addAction(ACTION_CHANGE_OVERLAY_DRAWABLE)
         registerReceiver(toggleOverlayReceiver, filter, RECEIVER_EXPORTED)
     }
 
@@ -86,13 +97,6 @@ class MyAccessibilityService : AccessibilityService() {
         val sharedPrefs = getSharedPreferences("OverlaySettings", Context.MODE_PRIVATE)
         if (sharedPrefs.getBoolean("OverlayEnabled", true)) {
             initializeView()
-        }
-    }
-
-    private fun removeOverlayView() {
-        if (overlayView != null && windowManager != null) {
-            windowManager.removeView(overlayView)
-            overlayView = null // Ensure the reference is cleared
         }
     }
 
@@ -223,6 +227,20 @@ class MyAccessibilityService : AccessibilityService() {
             windowManager?.addView(overlayView, layoutParams)
         } else {
             Log.e("MyAccessibilityService", "Failed to inflate overlay layout.")
+        }
+    }
+
+    private fun removeOverlayView() {
+        if (overlayView != null && windowManager != null) {
+            windowManager.removeView(overlayView)
+            overlayView = null // Ensure the reference is cleared
+        }
+    }
+
+    private fun updateSeekBarDrawable(drawableResId: Int) {
+        // Check if the overlay view and seek bar are initialized
+        if(overlayView != null && brightnessSeekBar != null) {
+            brightnessSeekBar.progressDrawable = ContextCompat.getDrawable(this, drawableResId)
         }
     }
 

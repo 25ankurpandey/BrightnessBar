@@ -29,6 +29,8 @@
         </activity>
 
         <activity android:name=".BrightnessBarActivity" />
+        <activity android:name=".DrawableSelectorActivity">
+        </activity>
 
         <service
             android:name=".MyAccessibilityService"

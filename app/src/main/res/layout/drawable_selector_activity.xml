@@ -1,0 +1,37 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:id="@+id/drawableContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <Button
+                android:id="@+id/drawableOption1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Drawable 1"
+                android:drawableLeft="@drawable/progress_bar_fill_black"
+                android:padding="8dp"
+                android:layout_margin="8dp"/>
+
+            <Button
+                android:id="@+id/drawableOption2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Drawable 2"
+                android:drawableLeft="@drawable/progress_bar_fill_white"
+                android:padding="8dp"
+                android:layout_margin="8dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
