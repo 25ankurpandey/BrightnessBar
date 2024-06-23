@@ -62,3 +62,4 @@ This Android project transforms the status bar into a transparent brightness sli
 - Commit your changes and push your branch.
 - Create a pull request detailing your changes.
 
+![app](https://github.com/25ankurpandey/BrightnessBar/assets/98592023/32981fff-1566-45cb-98be-ed8540bb3ea4)
