@@ -1,6 +1,6 @@
 # Transparent Brightness Slider for Android
 
-This Android project transforms the status bar into a transparent brightness slider. Users can touch and hold the status bar to activate the brightness slider, and slide left or right to adjust the brightness without needing to swipe down the status bar.
+This Android project transforms the status bar of an Android phone into a transparent brightness slider. Users can touch and hold the status bar to activate the brightness slider, and slide left or right to adjust the brightness without needing to swipe down the status bar.
 
 ## Features
 
